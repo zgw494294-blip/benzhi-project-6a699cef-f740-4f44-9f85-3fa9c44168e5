@@ -112,6 +112,14 @@ func (ledger Ledger) Validate() error {
 			return fmt.Errorf("receipt %q does not match its completed reservation", receipt.ID)
 		}
 	}
+	for index, receipt := range ledger.Receipts {
+		for _, other := range ledger.Receipts[index+1:] {
+			if receipt.Bench == other.Bench &&
+				usageOverlaps(*receipt.CheckedInAt, *receipt.ReleasedAt, *other.CheckedInAt, *other.ReleasedAt) {
+				return fmt.Errorf("receipts %q and %q overlap on bench %q", receipt.ID, other.ID, receipt.Bench)
+			}
+		}
+	}
 	for _, reservation := range ledger.Reservations {
 		_, hasReceipt := receiptIDs[reservation.ID]
 		if (reservation.State == StateCompleted) != hasReceipt {
@@ -288,6 +296,18 @@ func isAllocated(state State) bool {
 
 func overlaps(start, end, otherStart, otherEnd time.Time) bool {
 	return start.Before(otherEnd) && otherStart.Before(end)
+}
+
+// usageOverlaps reports whether two completed usage intervals overlap. A
+// zero-duration usage (check-in equal to release) occupies no bench time and
+// therefore never conflicts. Two intervals that only touch at a boundary are
+// treated as non-overlapping, matching the half-open semantics used for
+// reservations.
+func usageOverlaps(checkIn, release, otherCheckIn, otherRelease time.Time) bool {
+	if !checkIn.Before(release) || !otherCheckIn.Before(otherRelease) {
+		return false
+	}
+	return checkIn.Before(otherRelease) && otherCheckIn.Before(release)
 }
 
 func findReservation(ledger Ledger, id string) (Reservation, error) {
