@@ -112,6 +112,15 @@ func (ledger Ledger) Validate() error {
 			return fmt.Errorf("receipt %q does not match its completed reservation", receipt.ID)
 		}
 	}
+	for index, receipt := range ledger.Receipts {
+		for _, other := range ledger.Receipts[index+1:] {
+			if receipt.Bench == other.Bench &&
+				receipt.CheckedInAt.Before(*receipt.ReleasedAt) && other.CheckedInAt.Before(*other.ReleasedAt) &&
+				overlaps(*receipt.CheckedInAt, *receipt.ReleasedAt, *other.CheckedInAt, *other.ReleasedAt) {
+				return fmt.Errorf("usage receipts %q and %q overlap", receipt.ID, other.ID)
+			}
+		}
+	}
 	for _, reservation := range ledger.Reservations {
 		_, hasReceipt := receiptIDs[reservation.ID]
 		if (reservation.State == StateCompleted) != hasReceipt {
