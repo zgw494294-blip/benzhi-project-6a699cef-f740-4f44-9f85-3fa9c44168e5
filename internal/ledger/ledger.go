@@ -43,8 +43,15 @@ func Save(path string, value benchslot.Ledger) (retErr error) {
 	if err := value.Validate(); err != nil {
 		return fmt.Errorf("validate ledger before save: %w", err)
 	}
-	directory := filepath.Dir(path)
-	base := filepath.Base(path)
+	destination := path
+	if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink != 0 {
+		destination, err = filepath.EvalSymlinks(path)
+		if err != nil {
+			return fmt.Errorf("resolve ledger symlink %q: %w", path, err)
+		}
+	}
+	directory := filepath.Dir(destination)
+	base := filepath.Base(destination)
 	temporary, err := os.CreateTemp(directory, "."+base+".tmp-")
 	if err != nil {
 		return fmt.Errorf("create temporary ledger: %w", err)
@@ -71,7 +78,7 @@ func Save(path string, value benchslot.Ledger) (retErr error) {
 	if err := temporary.Close(); err != nil {
 		return fmt.Errorf("close temporary ledger: %w", err)
 	}
-	if err := os.Rename(temporaryName, path); err != nil {
+	if err := os.Rename(temporaryName, destination); err != nil {
 		return fmt.Errorf("rename temporary ledger: %w", err)
 	}
 	keepTemporary = false
