@@ -189,6 +189,11 @@ func CheckIn(ledger *Ledger, id string, at time.Time) (Reservation, error) {
 	if reservation.State != StateConfirmed {
 		return Reservation{}, fmt.Errorf("reservation %q cannot be checked in from state %q", id, reservation.State)
 	}
+	for _, other := range ledger.Reservations {
+		if other.ID != id && other.Bench == reservation.Bench && other.State == StateOccupied {
+			return Reservation{}, fmt.Errorf("bench %q is occupied by reservation %q", reservation.Bench, other.ID)
+		}
+	}
 	checkedInAt := at.UTC()
 	reservation.State = StateOccupied
 	reservation.CheckedInAt = &checkedInAt
