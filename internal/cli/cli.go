@@ -225,7 +225,9 @@ func mutateReservation(path, id string, action func(*benchslot.Ledger) (benchslo
 	if err := ledger.Save(path, value); err != nil {
 		return fail(errorsOut, "%v", err)
 	}
-	fmt.Fprintf(output, "%s %s\n", message, id)
+	if _, err := fmt.Fprintf(output, "%s %s\n", message, id); err != nil {
+		return fail(errorsOut, "write response: %v", err)
+	}
 	return 0
 }
 
